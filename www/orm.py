@@ -332,42 +332,42 @@ class Model(dict, metaclass=ModelMetaclass):
             logging.warn("failed to remove by primary key: affected rows %s" % rows)
 
 
-if __name__ == "__main__":
-    # 定制表
-    class User(Model):
-        __table__ = 'user'
-        id = IntegerField('id', primary_key=True)
-        name = StringField('name')
-        email = StringField('email')
-        password = StringField('password')
-
-
-    # 测试
-    async def test(loop):
-        # 连接数据库
-        await create_pool(loop=loop, host='localhost', port=3306, user='root', password='123a456s789q',
-                          db='word_game')
-        # 创建实例（记录）
-        user = User(id=1, name='hk4fun', email='941222165@qq.com', password='123321')
-        # 保存（插入）--增
-        # await user.save()
-        # 删
-        # await user.remove()
-        # 改
-        # await user.update()
-        # 查找单个--查
-        # r = await User.find('2')
-        # 查找所有
-        # r = await User.findAll()
-        # 使用where查找
-        # r = await User.findAll(where="id='1'")
-        # 使用order by 和 limit
-        # r = await User.findAll(orderby="id desc",limit=3)
-        # print(r)
-        await destroy_pool()
-
-
-    # 创建异步事件的句柄
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(test(loop))
-    loop.close()
+# if __name__ == "__main__":
+#     # 定制表
+#     class User(Model):
+#         __table__ = 'user'
+#         id = IntegerField('id', primary_key=True)
+#         name = StringField('name')
+#         email = StringField('email')
+#         password = StringField('password')
+#
+#
+#     # 测试
+#     async def check(loop):
+#         # 连接数据库
+#         await create_pool(loop=loop, host='localhost', port=3306, user='root', password='123a456s789q',
+#                           db='word_game')
+#         # 创建实例（记录）
+#         user = User(id=1, name='hk4fun', email='941222165@qq.com', password='123321')
+#         # 保存（插入）--增
+#         # await user.save()
+#         # 删
+#         # await user.remove()
+#         # 改
+#         # await user.update()
+#         # 查找单个--查
+#         # r = await User.find('2')
+#         # 查找所有
+#         # r = await User.findAll()
+#         # 使用where查找
+#         # r = await User.findAll(where="id='1'")
+#         # 使用order by 和 limit
+#         # r = await User.findAll(orderby="id desc",limit=3)
+#         # print(r)
+#         await destroy_pool()
+#
+#
+#     # 创建异步事件的句柄
+#     loop = asyncio.get_event_loop()
+#     loop.run_until_complete(check(loop))
+#     loop.close()
