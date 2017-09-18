@@ -60,7 +60,6 @@ class Comment(Model):
     content = TextField()  # 评论内容
     created_at = FloatField(default=time.time)
 
-
 # if __name__ == "__main__":
 #     # 测试
 #     async def check(loop):
