@@ -58,7 +58,7 @@ try:
     import config_default
     import config_override
     configs = merge(config_default.configs, config_override.configs)
-    # 最后将混合好的配置字典专程自定义字典类型,方便取值与设值
+    # 最后将混合好的配置字典专程自定义字典类型,方便（点号）取值与设值，当然不用这样也可以，直接用[]
     configs = toDict(configs)
     # print("configs:\n{}".format(configs))
 except ImportError:
