@@ -41,6 +41,7 @@ import asyncio, os, json, time
 from aiohttp import web
 # Environment指jinja2模板的环境配置，FileSystemLoader是文件系统加载器，用来加载模板路径
 from jinja2 import Environment, FileSystemLoader
+from handlers import cookie2user, COOKIE_NAME
 
 # # 定义处理http访问请求的方法
 # def index(request):
@@ -112,6 +113,25 @@ async def data_factory(app, handler):
         return (await handler(request))
     return parse_data
 
+# 在处理请求之前,先将cookie解析出来,并将登录用户绑定到request对象上
+# 这样后续的url处理函数就可以直接拿到登录用户
+# 以后的每个请求,都是在这个middle之后处理的,都已经绑定了用户信息
+async def auth_factory(app, handler):
+    async def auth(request):
+        logging.info("check user: %s %s" % (request.method, request.path))
+        request.__user__ = None
+        cookie_str = request.cookies.get(COOKIE_NAME) # 通过cookie名取得加密cookie字符串(handlers.py中有定义set_cookie)
+        if cookie_str:
+            user = await cookie2user(cookie_str) # 验证cookie,并得到用户信息
+            if user:
+                logging.info("set current user: %s" % user.email)
+                request.__user__ = user # 将用户信息绑定到请求上
+            # 请求的路径是管理页面,但用户非管理员,将会重定向到登录页面?
+        if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
+            return web.HTTPFound('/signin')
+        return (await handler(request))
+    return auth
+
 # 上面factory是在url处理函数之前先对请求进行了处理,以下则在url处理函数之后进行处理
 # 其将request handler的返回值根据返回的类型转换为web.Response对象，吻合aiohttp框架的需求
 # 注意jinja2模板的渲染在该函数进行
@@ -147,6 +167,9 @@ async def response_factory(app, handler):
                 return resp
             # 存在对应模板的,则将套用模板,用request handler的结果指定的模板页进行渲染
             else:
+                # 增加__user__,前端页面将依次来决定是否显示用户信息，
+                # __user__在用户登陆后被auth_factory绑定到request中
+                r["__user__"] = request.__user__
                 resp = web.Response(body=app["__templating__"].get_template(template).render(**r).encode("utf-8"))
                 resp.content_type = "text/html;charset=utf-8"
                 return resp
@@ -190,7 +213,7 @@ async def init(loop):
                           user='www-data', password='www-data', db='awesome')
     #设置中间件（拦截器）
     app = web.Application(loop=loop, middlewares=[
-        logger_factory, response_factory, data_factory
+        logger_factory, response_factory, data_factory, auth_factory
     ])
     #初始化jinja2模板，并传入时间过滤器
     init_jinja2(app, filters=dict(datetime=datetime_filter))

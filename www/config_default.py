@@ -15,7 +15,7 @@ configs = {
         "password": "123a456s789q",
         "database": "awesome"
         },
-    "session": { # 定义会话信息
+    "session": { # 定义会话cookie密钥
         "secret": "AwEsOmE"
         }
     }

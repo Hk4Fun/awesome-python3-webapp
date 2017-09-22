@@ -221,7 +221,7 @@ class RequestHandler(object):
         logging.info('call with args: %s' % str(kw)) # 打印出最终传递给fn的参数
         try:
             return (await self._func(**kw))
-        except APIError as e:
+        except APIError as e: # 捕捉遇到的api错误并返回给用户
             return dict(error=e.error, data=e.data, message=e.message)
 
 
