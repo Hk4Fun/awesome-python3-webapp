@@ -126,7 +126,7 @@ async def auth_factory(app, handler):
             if user:
                 logging.info("set current user: %s" % user.email)
                 request.__user__ = user # 将用户信息绑定到请求上
-            # 请求的路径是管理页面,但用户非管理员,将会重定向到登录页面?
+            # 请求的路径是管理页面,但用户非管理员,将会重定向到登录页面
         if request.path.startswith('/manage/') and (request.__user__ is None or not request.__user__.admin):
             return web.HTTPFound('/signin')
         return (await handler(request))

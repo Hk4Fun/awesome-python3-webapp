@@ -42,7 +42,7 @@ class Blog(Model):
     id = StringField(primary_key=True, default=next_id, ddl="varchar(50)")
     user_id = StringField(ddl="varchar(50)")  # 作者id
     user_name = StringField(ddl="varchar(50)")  # 作者名
-    user_image = StringField(ddl="varchar(500)")  # 作者上传的图片
+    user_image = StringField(ddl="varchar(500)")  # 作者头像图片
     name = StringField(ddl="varchar(50)")  # 文章名
     summary = StringField(ddl="varchar(200)")  # 文章概要
     content = TextField()  # 文章正文
