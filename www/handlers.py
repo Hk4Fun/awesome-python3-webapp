@@ -27,7 +27,7 @@ _COOKIE_KEY = configs.session.secret   # cookie密钥,作为加密cookie的原�
 _RE_EMAIL = re.compile(r'^[\w\-]+\@[\w\-]+(\.[\w\-]+){1,4}$') # email的匹配正则表达式
 _RE_SHA1 = re.compile(r'^[0-9a-f]{40}$') # 密码的匹配正则表达式
 
-# ----------------------------------小函数区--------------------------------
+# ----------------------------------函数区--------------------------------
 
 # 用来验证用户的管理员身份，如果没有登陆（不是用户）或用户没有管理员属性，直接返回提示无权限
 def check_admin(request):
@@ -97,7 +97,9 @@ async def cookie2user(cookie_str):
         logging.exception(e)
     return None
 
-# ----------------------------------页面定义区--------------------------------
+
+# ----------------------------------基本功能---------------------------
+# 主页
 @get('/')
 async def index(*, page='1'):
     page_index = get_page_index(page)
@@ -115,100 +117,12 @@ async def index(*, page='1'):
         'blogs': blogs
     }
 
-# 获取博客详情页面
-@get('/blog/{id}')
-async def get_blog(id, request):
-    blog = await Blog.find(id)  # 通过id从数据库中查找博客信息
-    # 从数据库查找指定blog的全部评论，按时间降序排序，即最新的排在最前
-    comments = await Comment.findAll('blog_id=?', [id], orderby='created_at desc')
-    # 将每条评论都转化成html格式，这里的html_content在赋值时创建
-    for c in comments:
-        c.html_content = text2html(c.content)
-    # blog为markdown格式，将其转化成html格式，这里的html_content在赋值时创建
-    blog.html_content = markdown2.markdown(blog.content)
-    return {
-        '__template__': 'blog.html',
-        'blog': blog,
-          '__user__':request.__user__,
-        'comments': comments
-    }
-
-# 获取注册页面
+# 注册页面
 @get('/register')
 def register():
     return {
         '__template__': 'register.html'
     }
-
-# 获取登陆页面
-@get('/signin')
-def signin():
-    return {
-        '__template__': 'signin.html'
-    }
-
-# 登出
-@get("/signout")
-def signout(request):
-    # 请求头部的referer,表示从哪里链接到当前页面,即上一个页面
-    # 用户登出时,实际转到了/signout路径下,因此为了使登出毫无违和感,跳回上一个转过来的页面
-    referer = request.headers.get("Referer")
-    # 若无前一个网址,可能是用户新打开了一个标签页,则登录后转到首页
-    r = web.HTTPFound(referer or '/')
-    # 设置cookie的最大存活时间为0来删除cookie，这里的“-deleted-”只是提示，关键在与max_age=0
-    r.set_cookie(COOKIE_NAME, "-deleted-", max_age=0, httponly=True)
-    logging.info("user signed out.")
-    return r
-
-# 获取日志创建页
-@get('/manage/blogs/create')
-def manage_create_blog():
-    return {
-        '__template__': 'manage_blog_edit.html',
-        'id': '',
-        'action': '/api/blogs'#将blog提交到/api/blogs这个接口API
-    }
-
-# 获取修改博客页
-@get('/manage/blogs/edit')
-def manage_edit_blog(*, id):
-    return {
-        '__template__': 'manage_blog_edit.html',
-        'id': id,
-        'action': '/api/blogs/%s' % id
-    }
-
-# 获取日志列表页
-@get('/manage/blogs')
-def manage_blogs(*, page='1'):
-    return {
-        '__template__': 'manage_blogs.html',
-        'page_index': get_page_index(page)
-    }
-
-# 管理重定向
-@get('/manage/')
-def manage():
-    # 会被response_factory拦截去掉redirect:
-    # 然后重定向到/manage/comments
-    return 'redirect:/manage/comments'
-
-# 获取评论列表页
-@get('/manage/comments')
-def manage_comments(*, page='1'):
-    return {
-        '__template__': 'manage_comments.html',
-        'page_index': get_page_index(page)
-    }
-
-# 获取用户管理页
-@get('/manage/users')
-def manage_users(*, page='1'):
-    return {
-        '__template__': 'manage_users.html',
-        'page_index': get_page_index(page)
-    }
-# ----------------------------------API 功能定义区---------------------------
 
 # API: 提交注册信息
 @post('/api/users')
@@ -258,6 +172,13 @@ async def api_register_user(*, email, name, passwd):
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+# 登陆页面
+@get('/signin')
+def signin():
+    return {
+        '__template__': 'signin.html'
+    }
+
 # API: 登陆认证，提交认证信息
 @post('/api/authenticate')
 async def authenticate(*, email, passwd):# 通过邮箱与密码验证登录
@@ -294,6 +215,94 @@ async def authenticate(*, email, passwd):# 通过邮箱与密码验证登录
     r.body = json.dumps(user, ensure_ascii=False).encode('utf-8')
     return r
 
+# 登出
+@get("/signout")
+def signout(request):
+    # 请求头部的referer,表示从哪里链接到当前页面,即上一个页面
+    # 用户登出时,实际转到了/signout路径下,因此为了使登出毫无违和感,跳回上一个转过来的页面
+    referer = request.headers.get("Referer")
+    # 若无前一个网址,可能是用户新打开了一个标签页,则登录后转到首页
+    r = web.HTTPFound(referer or '/')
+    # 设置cookie的最大存活时间为0来删除cookie，这里的“-deleted-”只是提示，关键在与max_age=0
+    r.set_cookie(COOKIE_NAME, "-deleted-", max_age=0, httponly=True)
+    logging.info("user signed out.")
+    return r
+
+# 管理重定向
+@get('/manage/')
+def manage():
+    # 会被response_factory拦截去掉redirect:
+    # 然后重定向到/manage/comments
+    return 'redirect:/manage/comments'
+
+# ----------------------------------博客管理---------------------------
+# 博客详情
+@get('/blog/{id}')
+async def get_blog(id, request):
+    blog = await Blog.find(id)  # 通过id从数据库中查找博客信息
+    if not blog:
+        raise APIResourceNotFoundError('Blog')  # 资源未找到
+    # 从数据库查找指定blog的全部评论，按时间降序排序，即最新的排在最前
+    comments = await Comment.findAll('blog_id=?', [id], orderby='created_at desc')
+    # 将每条评论都转化成html格式，这里的html_content在赋值时创建
+    for c in comments:
+        c.html_content = text2html(c.content)
+    # blog为markdown格式，将其转化成html格式，这里的html_content在赋值时创建
+    blog.html_content = markdown2.markdown(blog.content)
+    return {
+        '__template__': 'blog.html',
+        'blog': blog,
+          '__user__':request.__user__,
+        'comments': comments
+    }
+
+# 创建博客
+@get('/manage/blogs/create')
+def manage_create_blog():
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': '',
+        'action': '/api/blogs'#将blog提交到/api/blogs这个接口API
+    }
+
+# 修改博客
+@get('/manage/blogs/edit')
+def manage_edit_blog(*, id):
+    return {
+        '__template__': 'manage_blog_edit.html',
+        'id': id,
+        'action': '/api/blogs/%s' % id
+    }
+
+# 博客列表
+@get('/manage/blogs')
+def manage_blogs(*, page='1'):
+    return {
+        '__template__': 'manage_blogs.html',
+        'page_index': get_page_index(page)
+    }
+
+# API：获取单条博客信息
+@get('/api/blogs/{id}')
+async def api_get_blog(*, id):
+    blog = await Blog.find(id)
+    if not blog:
+        raise APIResourceNotFoundError('Blog')  # 资源未找到
+    return blog
+
+# API: 获取博客
+@get('/api/blogs')
+async def api_blogs(*, page='1'):
+    page_index = get_page_index(page)
+    num = await Blog.findNumber('count(id)') # 获取博客总数
+    p = Page(num, page_index)  # 创建Page对象（Page对象在apis.py中定义）
+    if num == 0:
+        return dict(page=p, blogs=())
+    # 博客总数不为0,则从数据库中抓取博客
+    # limit使select语句返回指定的记录数,前一个参数为偏移量,后一个参数为每页的记录数目
+    blogs = await Blog.findAll(orderby='created_at desc', limit=(p.offset, p.limit))
+    return dict(page=p, blogs=blogs)  # 返回字典,以供response中间件处理
+
 # API: 创建博客（处理提交的blog）
 @post('/api/blogs')
 async def api_create_blog(request, *, name, summary, content):
@@ -312,59 +321,42 @@ async def api_create_blog(request, *, name, summary, content):
     await blog.save()  # 将博客存到数据库中
     return blog  # 返回博客信息
 
-# API：创建评论（处理提交的comment）
-@post('/api/blogs/{id}/comments')
-async def api_create_comment(id, request, *, content):
-    # 获取用户信息
-    user = request.__user__
-    # 验证用户合法性（未登录的用户无法评论）
-    if user is None:
-        raise APIPermissionError('Please signin first.')
-    # 验证评论内容是否存在
-    if not content or not content.strip():
-        raise APIValueError('content')
-    # 验证博客是否存在
+# API:删除博客
+@post('/api/blogs/{id}/delete')
+async def api_delete_blog(request, *, id):
+    check_admin(request)
     blog = await Blog.find(id)
     if blog is None:
         raise APIResourceNotFoundError('Blog')
-    # 创建评论对象
-    comment = Comment(blog_id=blog.id, user_id=user.id, user_name=user.name,
-                      user_image=user.image, content=content.strip())
-    await comment.save()  # 评论存到数据库中
-    return comment  # 返回评论
+    await blog.remove()
+    return dict(id=id)
 
-# API：获取单条博客信息
-@get('/api/blogs/{id}')
-async def api_get_blog(*, id):
-    blog = await Blog.find(id)
-    return blog
+# API:修改博客
+@post('/api/blogs/{id}')
+async def api_update_blog(id, request, *, name, summary, content):
+    check_admin(request)  # 检查用户权限
+    blog = await Blog.find(id)  # 从数据库中取出修改前的博客
+    # 检查博客的合法性
+    if not name or not name.strip():
+        raise APIValueError('name', 'name cannot be empty.')
+    if not summary or not summary.strip():
+        raise APIValueError('summary', 'summary cannot be empty.')
+    if not content or not content.strip():
+        raise APIValueError('content', 'content cannot be empty.')
+    blog.name = name.strip()
+    blog.summary = summary.strip()
+    blog.content = content.strip()
+    await blog.update()  # 更新博客
+    return blog  # 返回博客信息
 
-# API: 获取用户信息
-@get('/api/users')
-async def api_get_users(*, page="1"):
-    page_index = get_page_index(page)
-    num = await User.findNumber("count(id)")#获取用户数量
-    p = Page(num, page_index)
-    if num == 0:
-        return dict(page=p, users=())
-    users = await User.findAll(orderby="created_at desc", limit=(p.offset, p.limit))
-    for u in users:
-        u.passwd = "*****" # 将密码覆盖掉
-    # 以dict形式返回,并且未指定__template__,将被app.py的response factory处理为json
-    return dict(page=p, users=users)
-
-# API: 获取博客
-@get('/api/blogs')
-async def api_blogs(*, page='1'):
-    page_index = get_page_index(page)
-    num = await Blog.findNumber('count(id)') # 获取博客总数
-    p = Page(num, page_index)  # 创建Page对象（Page对象在apis.py中定义）
-    if num == 0:
-        return dict(page=p, blogs=())
-    # 博客总数不为0,则从数据库中抓取博客
-    # limit使select语句返回指定的记录数,前一个参数为偏移量,后一个参数为每页的记录数目
-    blogs = await Blog.findAll(orderby='created_at desc', limit=(p.offset, p.limit))
-    return dict(page=p, blogs=blogs)  # 返回字典,以供response中间件处理
+# ----------------------------------评论管理---------------------------
+# 评论列表
+@get('/manage/comments')
+def manage_comments(*, page='1'):
+    return {
+        '__template__': 'manage_comments.html',
+        'page_index': get_page_index(page)
+    }
 
 # API：获取评论
 @get('/api/comments')
@@ -387,30 +379,25 @@ async def api_delete_comments(id, request):
     await c.remove()  # 有则删除评论
     return dict(id=id)  # 返回被删除评论的id
 
-# API:修改博客
-@post('/api/blogs/{id}')
-async def api_update_blog(id, request, *, name, summary, content):
-    check_admin(request)  # 检查用户权限
-    blog = await Blog.find(id)  # 从数据库中取出修改前的博客
-    # 检查博客的合法性
-    if not name or not name.strip():
-        raise APIValueError('name', 'name cannot be empty.')
-    if not summary or not summary.strip():
-        raise APIValueError('summary', 'summary cannot be empty.')
-    if not content or not content.strip():
-        raise APIValueError('content', 'content cannot be empty.')
-    blog.name = name.strip()
-    blog.summary = summary.strip()
-    blog.content = content.strip()
-    await blog.update()  # 更新博客
-    return blog  # 返回博客信息
+# ----------------------------------用户管理---------------------------
+# 用户列表
+@get('/manage/users')
+def manage_users(*, page='1'):
+    return {
+        '__template__': 'manage_users.html',
+        'page_index': get_page_index(page)
+    }
 
-# API:删除博客
-@post('/api/blogs/{id}/delete')
-async def api_delete_blog(request, *, id):
-    check_admin(request)
-    blog = await Blog.find(id)
-    if blog is None:
-        raise APIResourceNotFoundError('Blog')
-    await blog.remove()
-    return dict(id=id)
+# API: 获取用户信息
+@get('/api/users')
+async def api_get_users(*, page="1"):
+    page_index = get_page_index(page)
+    num = await User.findNumber("count(id)")#获取用户数量
+    p = Page(num, page_index)
+    if num == 0:
+        return dict(page=p, users=())
+    users = await User.findAll(orderby="created_at desc", limit=(p.offset, p.limit))
+    for u in users:
+        u.passwd = "*****" # 将密码覆盖掉
+    # 以dict形式返回,并且未指定__template__,将被app.py的response factory处理为json
+    return dict(page=p, users=users)
