@@ -28,9 +28,11 @@ __author__ = 'Hk4Fun'
 # datefmt: 指定时间格式，同time.strftime()
 # level: 设置日志级别，默认为logging.WARNING
 # stream: 指定将日志的输出流，可以指定输出到sys.stderr,sys.stdout或者文件，默认输出到sys.stderr，当stream和filename同时指定时，stream被忽略
+
 from datetime import datetime
 import orm
 import logging
+
 logging.basicConfig(level=logging.INFO,
                     format="%(asctime)s %(message)s",  # 日志格式
                     datefmt="[%Y-%m-%d %H:%M:%S]")  # 日期格式
@@ -87,7 +89,7 @@ def init_jinja2(app, **kw):
             env.filters[name] = f
     app['__templating__'] = env#前面已经把jinja2的环境配置都赋值给env了，这里再把env存入app的dict中，这样app就知道要到哪儿去找模板，怎么解析模板。
 
-# ------------------------------------------拦截器middlewares设置----------------------------------------
+# --------------------------------------拦截器middlewares设置----------------------------------------
 # 以下是一些middleware(中间件), 相当于装饰器，可以在url处理函数处理前后对url进行处理
 # 每个middle factory接收2个参数,一个app实例,一个handler, 并返回一个新的handler
 
@@ -206,11 +208,12 @@ def datetime_filter(t):
         return u'%s天前' % (delta // 86400)
     dt = datetime.fromtimestamp(t)
     return u'%s年%s月%s日' % (dt.year, dt.month, dt.day)
+# --------------------------------------------------------------------------------------------------
 
 async def init(loop):
     #创建数据库连接池
     await orm.create_pool(loop=loop, host='127.0.0.1', port=3306,
-                          user='www-data', password='www-data', db='awesome')
+                          user='root', password='123a456s789q', db='awesome')
     #设置中间件（拦截器）
     app = web.Application(loop=loop, middlewares=[
         logger_factory, response_factory, data_factory, auth_factory
